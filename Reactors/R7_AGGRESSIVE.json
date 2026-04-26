@@ -1,0 +1,12 @@
+{
+    "model": "AGGRESSIVE-REACTOR",
+    "effective_section": 17.6,
+    "neutron_flux": 5e13,
+    "core_volume": 9.42e6,
+    "fision_energy": 3.2e-11,
+    "probabilities": {
+        "decrease": [0.1, 0.3, 0.6],
+        "maintain": [0.3, 0.5, 0.2],
+        "increase": [0.05, 0.15, 0.8]
+    }
+}
