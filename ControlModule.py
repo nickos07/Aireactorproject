@@ -15,20 +15,20 @@ class ControlModule:
         
         for s in range(num_states):
             # Action: Decrease (d) -> Outcomes: -2, -1, 0
-            p_d = probabilities[0] # [0.55, 0.20, 0.25] -> -2, -1, 0 [cite: 250]
+            p_d = probabilities[0]
             P[0, s, max(0, s - 2)] += p_d[0]
             P[0, s, max(0, s - 1)] += p_d[1]
-            P[0, s, s]             += p_d[2]
+            P[0, s, s] += p_d[2]
 
             # Action: Maintain (m) -> Outcomes: -1, 0, +1
-            p_m = probabilities[1] # [0.95, 0.025, 0.025] -> -1, 0, +1 [cite: 256]
-            P[1, s, max(0, s - 1)]          += p_m[0]
-            P[1, s, s]                      += p_m[1]
+            p_m = probabilities[1]
+            P[1, s, max(0, s - 1)] += p_m[0]
+            P[1, s, s] += p_m[1]
             P[1, s, min(num_states-1, s+1)] += p_m[2]
 
             # Action: Increase (i) -> Outcomes: 0, +1, +2
-            p_i = probabilities[2] # [0.65, 0.25, 0.1] -> 0, +1, +2 [cite: 257]
-            P[2, s, s]                      += p_i[0]
+            p_i = probabilities[2]
+            P[2, s, s] += p_i[0]
             P[2, s, min(num_states-1, s+1)] += p_i[1]
             P[2, s, min(num_states-1, s+2)] += p_i[2]
             
@@ -43,16 +43,16 @@ class ControlModule:
         C = np.zeros((3, num_states, num_states))
 
     # Power levels (lower bounds of intervals)
-        levels = np.linspace(0, 0.99, num_states) # 0.0, 0.01, ..., 0.99 [cite: 73]
+        levels = np.linspace(0, 0.99, num_states)
     
         for a in range(3):
             for s in range(num_states):
                 for s_next in range(num_states):
-                    # Target power at destination [cite: 118]
+                    # Target power at destination
                     p_next = levels[s_next]
                     distance = abs(current_demand - p_next)
                 
-                    # Penalization logic [cite: 119, 122]
+                    # Penalization logic
                     # If demand is below current state and we increase/maintain high
                     is_moving_away = False
                     if p_next > current_demand and a == 2: # Increasing while above demand
@@ -70,17 +70,17 @@ class ControlModule:
         Solves one step of the control loop.
         Returns the optimal action index (0, 1, or 2).
         """
-        # 1. Generate the cost matrix for this specific demand point [cite: 170]
+        # 1. Generate the cost matrix for this specific demand point
         C_matrix = ControlModule.generate_C(100, current_demand)
         
-        # 2. Initialize Value Iteration [cite: 174]
+        # 2. Initialize Value Iteration
         # Note: pymdptoolbox uses Reward (R). Reward = -Cost.
         vi = ValueIteration(P_matrix, -C_matrix, discount_factor)
         
         # 3. Run the algorithm to find the optimal policy
         vi.run()
         
-        # 4. Extract the best action for our current state [cite: 173]
+        # 4. Extract the best action for our current state
         optimal_policy = vi.policy # Array of 100 optimal actions
         return optimal_policy[current_state]
 
@@ -117,7 +117,7 @@ class ControlModule:
             # with the transition probabilities for the chosen action
             next_state = np.random.choice(n_states, p=transition_probs)
             
-            # Ensure the state stays within bounds [0, 99]
+            # Ensure the state stays within bounds
             next_state = np.clip(next_state, 0, n_states - 1)
             
             # Record the power level of the current state in history
