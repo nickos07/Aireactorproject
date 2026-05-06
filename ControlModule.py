@@ -1,8 +1,5 @@
-# Import required dependencies
 import numpy as np
 from mdptoolbox.mdp import ValueIteration
-
-#gilipollas
 
 class ControlModule:
     def __init__(self):
@@ -10,120 +7,109 @@ class ControlModule:
 
     @staticmethod
     def generate_P(num_states, probabilities) -> np.ndarray:
-        """ Function that generates the probabilities (transition) matrix """
-        P = np.zeros((3, num_states, num_states))
+        #Generate the transition matrix of probabilities
+        p = np.zeros((3, num_states, num_states))
         
         for s in range(num_states):
-            # Action: Decrease (d) -> Outcomes: -2, -1, 0
+            #Decrease
             p_d = probabilities[0]
-            P[0, s, max(0, s - 2)] += p_d[0]
-            P[0, s, max(0, s - 1)] += p_d[1]
-            P[0, s, s] += p_d[2]
+            p[0, s, max(0, s - 2)] += p_d[0]
+            p[0, s, max(0, s - 1)] += p_d[1]
+            p[0, s, s] += p_d[2]
 
-            # Action: Maintain (m) -> Outcomes: -1, 0, +1
+            #Maintain
             p_m = probabilities[1]
-            P[1, s, max(0, s - 1)] += p_m[0]
-            P[1, s, s] += p_m[1]
-            P[1, s, min(num_states-1, s+1)] += p_m[2]
+            p[1, s, max(0, s - 1)] += p_m[0]
+            p[1, s, s] += p_m[1]
+            p[1, s, min(num_states-1, s+1)] += p_m[2]
 
-            # Action: Increase (i) -> Outcomes: 0, +1, +2
+            #Increase
             p_i = probabilities[2]
-            P[2, s, s] += p_i[0]
-            P[2, s, min(num_states-1, s+1)] += p_i[1]
-            P[2, s, min(num_states-1, s+2)] += p_i[2]
+            p[2, s, s] += p_i[0]
+            p[2, s, min(num_states-1, s+1)] += p_i[1]
+            p[2, s, min(num_states-1, s+2)] += p_i[2]
             
-        return P
+        return p
 
     @staticmethod
     def generate_C(num_states, current_demand):
-        """
-        Generates matrix C (Actions x States x States)
-        current_demand: float between 0 and 1
-        """
-        C = np.zeros((3, num_states, num_states))
-
-    # Power levels (lower bounds of intervals)
+        #Generate the matrix of costs (3 Actions x 100 States x 100 Next states)
+        c = np.zeros((3, num_states, num_states))
+        #Array of 100 power levels(from 0.0 to 0.99)
         levels = np.linspace(0, 0.99, num_states)
     
-        for a in range(3):
-            for s in range(num_states):
-                for s_next in range(num_states):
-                    # Target power at destination
-                    p_next = levels[s_next]
+        for a in range(3):  #Loop through the actions
+            for s in range(num_states): #Loop through the starting state
+                for next_state in range(num_states): #Loop through the state level it can land on
+                    #Get power level and calculate demand
+                    p_next = levels[next_state]
                     distance = abs(current_demand - p_next)
-                
-                    # Penalization logic
-                    # If demand is below current state and we increase/maintain high
+
+                    # If demand is below current state, and we increase/maintain high
                     is_moving_away = False
-                    if p_next > current_demand and a == 2: # Increasing while above demand
+
+                    if p_next > current_demand and a == 2: #If increase while above demand
                         is_moving_away = True
-                    elif p_next < current_demand and a == 0: # Decreasing while below demand
+                    elif p_next < current_demand and a == 0: #If decrease while below demand
                         is_moving_away = True
-                    
-                    C[a, s, s_next] = distance * 2 if is_moving_away else distance
+
+                    if is_moving_away:
+                        c[a, s, next_state] = distance * 2
+                    else:
+                        c[a, s, next_state] = distance
                 
-        return C
+        return c
 
     @staticmethod
-    def solve_control_iteration(current_state, current_demand, P_matrix, discount_factor=0.9):
-        """
-        Solves one step of the control loop.
-        Returns the optimal action index (0, 1, or 2).
-        """
-        # 1. Generate the cost matrix for this specific demand point
-        C_matrix = ControlModule.generate_C(100, current_demand)
+    def solve_control_iteration(current_state, current_demand, p_matrix, discount_factor=0.9):
+        #Solve one step in the control loop: deduce best action
+
+        #Get the cost matrix
+        c_matrix = ControlModule.generate_C(100, current_demand)
         
-        # 2. Initialize Value Iteration
-        # Note: pymdptoolbox uses Reward (R). Reward = -Cost.
-        vi = ValueIteration(P_matrix, -C_matrix, discount_factor)
+        #Use ValueIteration algorithm from pymdptoolbox
+        # pass cost matrix as negative because Reward = -Cost
+        vi = ValueIteration(p_matrix, -c_matrix, discount_factor)
         
-        # 3. Run the algorithm to find the optimal policy
+        #Find and return the optimal policy
         vi.run()
-        
-        # 4. Extract the best action for our current state
-        optimal_policy = vi.policy # Array of 100 optimal actions
+        optimal_policy = vi.policy
         return optimal_policy[current_state]
 
     @staticmethod
-    def control_loop(demand: np.ndarray, 
-                     probs: np.ndarray,
-                     n_states: np.int32, 
-                     n_actions: np.int32,
-                     gamma: np.float64) -> np.ndarray:
-        """ Function that computes all the required iterations (control-loop) to satisfy the power demand """
-        # Generate the probability transition matrix P
-        P_matrix = ControlModule.generate_P(n_states, probs)
-        
-        # Initialize history array to store power levels
+    def control_loop(demand, probs, n_states, n_actions, gamma) -> np.ndarray:
+        #Run the control loop
+
+        #Generate P
+        p_matrix = ControlModule.generate_P(n_states, probs)
+
         history = np.zeros(len(demand), dtype=np.float64)
-        
-        # Power levels mapping: 0.0, 0.01, ..., 0.99 for 100 states
+
         levels = np.linspace(0, 0.99, n_states)
         
-        # Start from initial state (middle of the range)
+        #Start at the initial state in the middle
         current_state = 50
         
-        # Iterate through every point in the demand array
+        #Iterate through every point in the demand
         for i, current_demand in enumerate(demand):
-            # Find the optimal action for the current state and demand
+            #Find optimal action
             optimal_action = ControlModule.solve_control_iteration(
-                current_state, current_demand, P_matrix, gamma
-            )
+                current_state, current_demand, p_matrix, gamma)
             
-            # Get transition probabilities for this action from current state
-            transition_probs = P_matrix[optimal_action, current_state, :]
+            #Get transition probabilities for this action from current state
+            transition_probs = p_matrix[optimal_action, current_state, :]
             
-            # Stochastically determine the next state using numpy.random.choice
-            # with the transition probabilities for the chosen action
+            #Determine the next state using numpy.random.choice
+            #with the transition probabilities for the chosen action
             next_state = np.random.choice(n_states, p=transition_probs)
             
-            # Ensure the state stays within bounds
+            #Make sure that state stays within bounds
             next_state = np.clip(next_state, 0, n_states - 1)
             
-            # Record the power level of the current state in history
+            #Record the power level of current state in history
             history[i] = levels[current_state]
             
-            # Update current state for next iteration
+            #Update current state
             current_state = next_state
         
         return history
