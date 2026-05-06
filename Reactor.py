@@ -31,20 +31,16 @@ class Reactor:
 
     def compute_max_power(self) -> np.float64:
         """ Computes the maximum power of a reactor based on its physical features """
-        ### TO BE COMPLETED BY THE STUDENTS ###
-        ...
+        return self.effective_section * self.neutron_flux * self.core_volume * self.fision_energy
     
     def compute_k(self) -> np.float64:
         """ Computes the value of the k-constant """
-        ### TO BE COMPLETED BY THE STUDENTS ###
-        ...
+        return -np.log(1e-6)
     
     def compute_power(self, control_bars_insertion: np.float64) -> np.float64:
         """ Computes the power delivered (%) by the reactor based on the % of control-bars inserted """
-        ### TO BE COMPLETED BY THE STUDENTS ###
-        ...
+        return self.max_power * np.exp(-self.k * control_bars_insertion)
     
     def compute_control_bars_insertion(self, power: np.float64) -> np.float64:
         """ Computes the % of controls-bars inserted based on the % of power delivered by the reactor """
-        ### TO BE COMPLETED BY THE STUDENTS ###
-        ...
+        return -(1.0 / self.k) * np.log(power / self.max_power)

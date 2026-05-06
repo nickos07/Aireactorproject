@@ -12,8 +12,8 @@ def MSE(y_true: np.ndarray, y_pred: np.ndarray) -> np.float64:
 def R2(y_true: np.ndarray, y_pred: np.ndarray) -> np.float64:
     """ Implementation of the R2 metric """
     ss_res = np.sum((y_true - y_pred) ** 2)
-    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
-    return 1.0 - (ss_res / ss_tot)
+    ss_total = np.sum((y_true - np.mean(y_true)) ** 2)
+    return 1.0 - (ss_res / ss_total)
 
 def Corr(y_true: np.ndarray, y_pred: np.ndarray) -> np.float64:
     """ Implementation of the Pearson's Correlation Coefficient """
